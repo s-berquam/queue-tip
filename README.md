@@ -26,7 +26,9 @@ Open http://localhost:3000 with your browser to see the result.
 ### Tech Stack
 
 Frontend: React, CSS
+
 Backend: Supabase
+
 Hosting: Vercel
 
 ## Deploy on Vercel
@@ -38,5 +40,7 @@ This project uses [`next/font`](https://nextjs.org/docs/app/building-your-applic
 ## Contributing
 
 Email: sarah.berquam@gmail.com
+
 Instagram: @all_love_jams
+
 LinkedIn: https://www.linkedin.com/in/sarahberquam/
