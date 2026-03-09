@@ -11,6 +11,9 @@ export default function Landing() {
         <Link href="/request-page">
           <button>Request a Song</button>
         </Link>
+        <Link href="/queue">
+          <button className="secondary">🔥 View Queue &amp; Vote</button>
+        </Link>
       </div>
 
 
@@ -59,6 +62,15 @@ export default function Landing() {
 
         button:hover {
           background-color: #c3a0ff;
+        }
+        button.secondary {
+          background-color: transparent;
+          border: 2px solid #d8b8ff;
+          color: #d8b8ff;
+        }
+        button.secondary:hover {
+          background-color: #d8b8ff;
+          color: #2c1a3b;
         }
 
         /* Mobile adjustments */
