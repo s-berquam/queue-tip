@@ -40,8 +40,8 @@
 | Route | Description |
 |-------|-------------|
 | `/` | Landing page |
-| `/request-page` | Song request form with vibe picker and suggestions |
-| `/queue` | Public queue — browse requests, filter by vibe, vote with 🔥 |
+| `/request-page` | Song request form and vibe suggestions |
+| `/queue` | Song queue — browse requests, boost your song |
 | `/dashboard` | DJ admin console — live requests, status controls, vibe filter |
 
 ---
