@@ -1,10 +1,9 @@
 import Stripe from "stripe"
 import { NextRequest, NextResponse } from "next/server"
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: 
-"2022-11-15" })
-
 export async function POST(req: NextRequest) {
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion:
+"2026-01-28.clover" })
   const { tipAmount, song, artist, email, phone, notes } = await 
 req.json()
 

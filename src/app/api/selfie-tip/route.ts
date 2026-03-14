@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
         redirectUrl: `${process.env.NEXT_PUBLIC_BASE_URL}/queue?selfie_success=true`,
       },
     })
-    result = response.result
+    result = response
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err)
     console.error("Square error:", message)

@@ -43,11 +43,32 @@ export default function QueuePage() {
   const [showScrollTop, setShowScrollTop] = useState(false)
   const [boostSuccess, setBoostSuccess] = useState(false)
   const [selfieSuccess, setSelfieSuccess] = useState(false)
-  const successTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const [showOptIn, setShowOptIn] = useState(false)
+  const [optInSubmitting, setOptInSubmitting] = useState(false)
+  const [optInDone, setOptInDone] = useState(false)
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
-    setMyRequestId(localStorage.getItem("my_request_id"))
+    const id = localStorage.getItem("my_request_id")
+    setMyRequestId(id)
+    const alreadySeen = localStorage.getItem("opt_in_shown")
+    if (id && !alreadySeen) setShowOptIn(true)
   }, [])
+
+  async function handleOptIn() {
+    if (!myRequestId || optInSubmitting) return
+    setOptInSubmitting(true)
+    await supabase.from("requests").update({ opt_in: true }).eq("id", myRequestId)
+    setOptInSubmitting(false)
+    setOptInDone(true)
+    localStorage.setItem("opt_in_shown", "true")
+    setTimeout(() => setShowOptIn(false), 2000)
+  }
+
+  function handleOptInDismiss() {
+    localStorage.setItem("opt_in_shown", "true")
+    setShowOptIn(false)
+  }
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -161,21 +182,21 @@ export default function QueuePage() {
       {/* Falling hearts background */}
       <div className="hearts-bg" aria-hidden="true">
         {[
-          { left: "5%",  size: "1rem",   delay: "0s",    dur: "12s",  opacity: 0.07 },
-          { left: "12%", size: "0.8rem", delay: "2.5s",  dur: "9s",   opacity: 0.09 },
-          { left: "22%", size: "1.2rem", delay: "5s",    dur: "14s",  opacity: 0.06 },
-          { left: "33%", size: "0.7rem", delay: "1s",    dur: "11s",  opacity: 0.08 },
-          { left: "41%", size: "1rem",   delay: "7s",    dur: "10s",  opacity: 0.07 },
-          { left: "50%", size: "1.3rem", delay: "3s",    dur: "13s",  opacity: 0.05 },
-          { left: "58%", size: "0.8rem", delay: "8.5s",  dur: "9.5s", opacity: 0.09 },
-          { left: "67%", size: "1.1rem", delay: "0.5s",  dur: "15s",  opacity: 0.06 },
-          { left: "75%", size: "0.9rem", delay: "4s",    dur: "11s",  opacity: 0.08 },
-          { left: "83%", size: "1.2rem", delay: "6s",    dur: "12s",  opacity: 0.07 },
-          { left: "90%", size: "0.7rem", delay: "2s",    dur: "10s",  opacity: 0.09 },
-          { left: "97%", size: "1rem",   delay: "9s",    dur: "13s",  opacity: 0.06 },
-          { left: "17%", size: "0.9rem", delay: "11s",   dur: "14s",  opacity: 0.07 },
-          { left: "46%", size: "0.8rem", delay: "13s",   dur: "10s",  opacity: 0.08 },
-          { left: "72%", size: "1.1rem", delay: "15s",   dur: "12s",  opacity: 0.06 },
+          { left: "5%",  size: "1rem",   delay: "0s",    dur: "12s",  opacity: 0.18 },
+          { left: "12%", size: "0.8rem", delay: "2.5s",  dur: "9s",   opacity: 0.20 },
+          { left: "22%", size: "1.2rem", delay: "5s",    dur: "14s",  opacity: 0.16 },
+          { left: "33%", size: "0.7rem", delay: "1s",    dur: "11s",  opacity: 0.18 },
+          { left: "41%", size: "1rem",   delay: "7s",    dur: "10s",  opacity: 0.17 },
+          { left: "50%", size: "1.3rem", delay: "3s",    dur: "13s",  opacity: 0.15 },
+          { left: "58%", size: "0.8rem", delay: "8.5s",  dur: "9.5s", opacity: 0.20 },
+          { left: "67%", size: "1.1rem", delay: "0.5s",  dur: "15s",  opacity: 0.16 },
+          { left: "75%", size: "0.9rem", delay: "4s",    dur: "11s",  opacity: 0.18 },
+          { left: "83%", size: "1.2rem", delay: "6s",    dur: "12s",  opacity: 0.17 },
+          { left: "90%", size: "0.7rem", delay: "2s",    dur: "10s",  opacity: 0.20 },
+          { left: "97%", size: "1rem",   delay: "9s",    dur: "13s",  opacity: 0.16 },
+          { left: "17%", size: "0.9rem", delay: "11s",   dur: "14s",  opacity: 0.17 },
+          { left: "46%", size: "0.8rem", delay: "13s",   dur: "10s",  opacity: 0.18 },
+          { left: "72%", size: "1.1rem", delay: "15s",   dur: "12s",  opacity: 0.16 },
         ].map((h, i) => (
           <span
             key={i}
@@ -203,6 +224,30 @@ export default function QueuePage() {
             <div className="popup-icon">🎉</div>
             <p>Your selfie will stay on screen longer!</p>
             <button onClick={() => setSelfieSuccess(false)}>Got it</button>
+          </div>
+        </div>
+      )}
+
+      {/* Opt-in popup */}
+      {showOptIn && (
+        <div className="popup-overlay">
+          <div className="popup optin-popup">
+            {optInDone ? (
+              <>
+                <div className="popup-icon">🎉</div>
+                <p>You're in! See you at the next one.</p>
+              </>
+            ) : (
+              <>
+                <div className="popup-icon">🎶</div>
+                <h2 className={pacifico.className}>Loving the Vibe?</h2>
+                <p>Sign up for event notifications from Queen of Clubs Collective — no spam, just good music.</p>
+                <button className="optin-yes-btn" onClick={handleOptIn} disabled={optInSubmitting}>
+                  {optInSubmitting ? "Signing up..." : "Yes, notify me!"}
+                </button>
+                <button className="optin-no-btn" onClick={handleOptInDismiss}>No thanks</button>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -243,37 +288,55 @@ export default function QueuePage() {
         </div>
       )}
 
-      <div className="top-nav">
-        <button className="back-btn-top" onClick={() => router.back()}>← Back</button>
-        <button className="back-btn-top" onClick={() => router.push("/")}>⌂ Home</button>
-      </div>
-
-      <h1 className={pacifico.className}>Song Queue</h1>
-
-      {/* Up Next banner */}
-      {isUpNext && (
-        <div className="up-next-banner">
-          <span className="up-next-pulse">🎵</span>
-          <span>Your song is up next!</span>
+      <div className="queue-header">
+        <div className="top-nav">
+          <button className="back-btn-top" onClick={() => router.back()}>← Back</button>
+          <button className="back-btn-top" onClick={() => router.push("/home")}>⌂ Home</button>
         </div>
-      )}
 
-      <div className="search-wrap">
-        <input
-          className="search-input"
-          placeholder="Search artist, song, or name..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
+        <h1 className={pacifico.className}>
+          Song <span style={{ position: "relative", display: "inline-block" }}>
+            <span>Q</span>
+            <svg style={{ position: "absolute", width: "36px", top: "8px", left: "50%", transform: "translateX(-60%) rotate(-14deg)" }} viewBox="0 0 52 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2 24 L2 10 L13 18 L26 2 L39 18 L50 10 L50 24 Z" fill="#a07cc5" stroke="#d8b8ff" strokeWidth="1.5" strokeLinejoin="round"/>
+              <rect x="2" y="22" width="48" height="6" rx="2" fill="#6b3fa0" stroke="#d8b8ff" strokeWidth="1.2"/>
+              <circle cx="26" cy="5" r="3" fill="#6b7c3a"/>
+              <circle cx="13" cy="19" r="2.2" fill="#f0e6f5"/>
+              <circle cx="39" cy="19" r="2.2" fill="#f0e6f5"/>
+              <circle cx="2" cy="11" r="1.8" fill="#6b7c3a"/>
+              <circle cx="50" cy="11" r="1.8" fill="#6b7c3a"/>
+            </svg>
+          </span>ueue
+        </h1>
 
-      {/* Selfie bump banner */}
-      {showSelfieButton && (
-        <div className="selfie-banner">
-          <span>Your selfie is on the big screen!</span>
-          <button className="selfie-btn" onClick={() => setSelfieModalOpen(true)}>Keep it on longer 🔥</button>
+        {/* Up Next banner */}
+        {isUpNext && (
+          <div className="up-next-banner">
+            <span className="up-next-pulse">🎵</span>
+            <span>Your song is up next!</span>
+          </div>
+        )}
+
+        <div className="search-wrap">
+          <input
+            className="search-input"
+            id="search"
+            name="search"
+            autoComplete="off"
+            placeholder="Search artist, song, or name..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
-      )}
+
+        {/* Selfie bump banner */}
+        {showSelfieButton && (
+          <div className="selfie-banner">
+            <span>Your selfie is on the big screen!</span>
+            <button className="selfie-btn" onClick={() => setSelfieModalOpen(true)}>Keep it on longer 🔥</button>
+          </div>
+        )}
+      </div>
 
       <div className="queue-list">
         {displayed.length === 0 && <p className="empty">{search ? "No matches found." : "No requests yet — be the first!"}</p>}
@@ -305,12 +368,45 @@ export default function QueuePage() {
         </button>
       )}
 
+      <div className="socials">
+        <a href="https://www.facebook.com/alllovejams/" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
+            <path d="M22 12c0-5.522-4.478-10-10-10S2 6.478 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987H7.898V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/>
+          </svg>
+        </a>
+        <a href="https://www.instagram.com/all_love_jams/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
+            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.334 3.608 1.308.975.975 1.246 2.242 1.308 3.608.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.062 1.366-.334 2.633-1.308 3.608-.975.975-2.242 1.246-3.608 1.308-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.366-.062-2.633-.334-3.608-1.308-.975-.975-1.246-2.242-1.308-3.608C2.175 15.584 2.163 15.204 2.163 12s.012-3.584.07-4.85c.062-1.366.334-2.633 1.308-3.608.975-.975 2.242-1.246 3.608-1.308C8.416 2.175 8.796 2.163 12 2.163zm0-2.163C8.741 0 8.332.014 7.052.072 5.197.157 3.355.673 2.014 2.014.673 3.355.157 5.197.072 7.052.014 8.332 0 8.741 0 12c0 3.259.014 3.668.072 4.948.085 1.855.601 3.697 1.942 5.038 1.341 1.341 3.183 1.857 5.038 1.942C8.332 23.986 8.741 24 12 24s3.668-.014 4.948-.072c1.855-.085 3.697-.601 5.038-1.942 1.341-1.341 1.857-3.183 1.942-5.038C23.986 15.668 24 15.259 24 12s-.014-3.668-.072-4.948c-.085-1.855-.601-3.697-1.942-5.038C20.645.673 18.803.157 16.948.072 15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zm0 10.162a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
+          </svg>
+        </a>
+        <a href="https://discord.gg/PK7q35eCGY" target="_blank" rel="noopener noreferrer" aria-label="Discord">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
+            <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+          </svg>
+        </a>
+        <a href="https://www.twitch.tv/allloveolive" target="_blank" rel="noopener noreferrer" aria-label="Twitch">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
+            <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/>
+          </svg>
+        </a>
+      </div>
+
       <style jsx>{`
         .queue-page {
-          min-height: 100vh;
-          padding: 2rem 1rem;
+          height: 100vh;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          padding: 2rem 1rem 0;
+          box-sizing: border-box;
           background-color: #2c1a3b;
           color: #f0e6f5;
+        }
+        .queue-header {
+          flex-shrink: 0;
+          width: 100%;
+          max-width: 600px;
+          margin: 0 auto;
         }
         .hearts-bg {
           position: fixed; inset: 0; pointer-events: none;
@@ -328,7 +424,8 @@ export default function QueuePage() {
           75%  { transform: translateY(75vh) translateX(10px) rotate(12deg); }
           100% { transform: translateY(110vh) translateX(0) rotate(0deg); }
         }
-        .queue-page > *:not(.hearts-bg):not(.scroll-top-btn) { position: relative; z-index: 1; }
+        .queue-page > *:not(.hearts-bg):not(.scroll-top-btn):not(.socials),
+        .queue-header { position: relative; z-index: 1; }
         .top-nav {
           max-width: 600px; margin: 0 auto 1rem;
           display: flex; gap: 0.5rem;
@@ -340,7 +437,7 @@ export default function QueuePage() {
         }
         .back-btn-top:hover { background: #a07cc5; color: #c9b8e0; }
         h1 {
-          text-align: center; font-size: 2.5rem;
+          text-align: center; font-size: 2.8rem;
           margin-bottom: 1.5rem; color: #6b7c3a;
         }
         .up-next-banner {
@@ -394,7 +491,10 @@ export default function QueuePage() {
         }
         .selfie-btn:hover { background: #ffc94d; }
         .queue-list {
+          flex: 1;
+          overflow-y: auto;
           max-width: 600px; margin: 0 auto;
+          width: 100%;
           display: flex; flex-direction: column; gap: 0.75rem;
         }
         .empty { text-align: center; color: #a07cc5; margin-top: 2rem; }
@@ -445,6 +545,21 @@ export default function QueuePage() {
         }
         .scroll-top-btn:hover { background: #c3a0ff; }
 
+        .socials {
+          flex-shrink: 0;
+          display: flex;
+          gap: 1.5rem;
+          justify-content: center;
+          padding: 0.75rem 0;
+        }
+        .socials a {
+          color: #a07cc5;
+          transition: color 0.2s;
+        }
+        .socials a:hover {
+          color: #d8b8ff;
+        }
+
         /* Modals */
         .modal-overlay {
           position: fixed; inset: 0; background: rgba(0,0,0,0.7);
@@ -457,7 +572,7 @@ export default function QueuePage() {
           display: flex; flex-direction: column; gap: 1rem;
           border: 2px solid #a07cc5;
         }
-        .modal h2 { font-size: 1.3rem; color: #6b7c3a; margin: 0; text-align: center; font-family: ${pacifico.style.fontFamily}; }
+        .modal h2 { font-size: 1.5rem; color: #6b7c3a; margin: 0; text-align: center; font-family: ${pacifico.style.fontFamily}; }
         .modal-sub { font-size: 0.9rem; color: #c9b8e0; margin: 0; text-align: center; }
         .tip-tiers { display: flex; flex-direction: column; gap: 0.5rem; }
         .tip-tier-btn {
@@ -493,9 +608,32 @@ export default function QueuePage() {
           padding: 0.5rem 1.5rem; border-radius: 20px; border: none;
           background: #9effa3; color: #2c1a3b; font-weight: bold; cursor: pointer;
         }
+        .optin-popup {
+          border-color: #d8b8ff;
+          gap: 0.75rem;
+        }
+        .optin-popup h2 {
+          font-size: 1.6rem; color: #d8b8ff; margin: 0;
+        }
+        .optin-popup p {
+          font-size: 0.9rem; color: #c9b8e0; text-align: center;
+        }
+        .optin-yes-btn {
+          width: 100%; padding: 0.75rem; border-radius: 12px; border: none;
+          background: #d8b8ff; color: #2c1a3b; font-size: 1rem;
+          font-weight: bold; cursor: pointer; transition: background 0.2s;
+        }
+        .optin-yes-btn:hover:not(:disabled) { background: #c3a0ff; }
+        .optin-yes-btn:disabled { opacity: 0.6; cursor: default; }
+        .optin-no-btn {
+          background: transparent; border: none; color: #7a6a8a;
+          font-size: 0.85rem; cursor: pointer; text-decoration: underline;
+          padding: 0;
+        }
+        .optin-no-btn:hover { color: #c9b8e0; }
 
         @media (max-width: 480px) {
-          h1 { font-size: 2rem; }
+          h1 { font-size: 2.8rem; }
           .song-title { font-size: 0.95rem; }
           .song-meta { font-size: 0.75rem; }
         }

@@ -200,7 +200,7 @@ export default function RequestPage() {
 
       <div className="container">
         <div className="top-nav">
-          <button className="back-arrow" onClick={() => router.push("/")}>⌂ Home</button>
+          <button className="back-arrow" onClick={() => router.push("/home")}>⌂ Home</button>
         </div>
         <h1 className={pacifico.className}>Song Requests</h1>
         <p className="intro">
@@ -211,7 +211,6 @@ export default function RequestPage() {
         {submitted && (
           <div className="modal-overlay">
             <div className="modal">
-              <div className="modal-icon">🎉</div>
               <h2>Song submitted!</h2>
               <p className="modal-song">
                 {submitted.song} <span className="modal-by">by</span> {submitted.artist}
@@ -236,6 +235,8 @@ export default function RequestPage() {
 
           <input
             className="input-field"
+            name="first-name"
+            autoComplete="given-name"
             placeholder="Your First Name"
             value={firstName}
             onChange={(e) => setFirstName(e.target.value)}
@@ -243,6 +244,8 @@ export default function RequestPage() {
 
           <input
             className="input-field"
+            name="artist"
+            autoComplete="off"
             placeholder="Artist *"
             value={artist}
             onChange={(e) => setArtist(e.target.value)}
@@ -252,6 +255,8 @@ export default function RequestPage() {
             <div className="song-row">
               <input
                 className={`input-field song-input${djChoice ? " dimmed" : ""}`}
+                name="song"
+                autoComplete="off"
                 placeholder="Song title"
                 value={djChoice ? "" : song}
                 onChange={(e) => handleSongInput(e.target.value)}
@@ -304,6 +309,8 @@ export default function RequestPage() {
           <input
             className="input-field"
             type="email"
+            name="email"
+            autoComplete="email"
             placeholder="Email (optional if phone provided)"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -311,12 +318,16 @@ export default function RequestPage() {
           <input
             className="input-field"
             type="tel"
+            name="phone"
+            autoComplete="tel"
             placeholder="Phone (optional if email provided)"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
           />
           <textarea
             className="input-field"
+            name="notes"
+            autoComplete="off"
             placeholder="Optional notes for the DJ"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -345,13 +356,36 @@ export default function RequestPage() {
 
       </div>
 
+      <div className="socials">
+        <a href="https://www.facebook.com/alllovejams/" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
+            <path d="M22 12c0-5.522-4.478-10-10-10S2 6.478 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987H7.898V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/>
+          </svg>
+        </a>
+        <a href="https://www.instagram.com/all_love_jams/" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
+            <path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.334 3.608 1.308.975.975 1.246 2.242 1.308 3.608.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.062 1.366-.334 2.633-1.308 3.608-.975.975-2.242 1.246-3.608 1.308-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.366-.062-2.633-.334-3.608-1.308-.975-.975-1.246-2.242-1.308-3.608C2.175 15.584 2.163 15.204 2.163 12s.012-3.584.07-4.85c.062-1.366.334-2.633 1.308-3.608.975-.975 2.242-1.246 3.608-1.308C8.416 2.175 8.796 2.163 12 2.163zm0-2.163C8.741 0 8.332.014 7.052.072 5.197.157 3.355.673 2.014 2.014.673 3.355.157 5.197.072 7.052.014 8.332 0 8.741 0 12c0 3.259.014 3.668.072 4.948.085 1.855.601 3.697 1.942 5.038 1.341 1.341 3.183 1.857 5.038 1.942C8.332 23.986 8.741 24 12 24s3.668-.014 4.948-.072c1.855-.085 3.697-.601 5.038-1.942 1.341-1.341 1.857-3.183 1.942-5.038C23.986 15.668 24 15.259 24 12s-.014-3.668-.072-4.948c-.085-1.855-.601-3.697-1.942-5.038C20.645.673 18.803.157 16.948.072 15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zm0 10.162a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
+          </svg>
+        </a>
+        <a href="https://discord.gg/PK7q35eCGY" target="_blank" rel="noopener noreferrer" aria-label="Discord">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
+            <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+          </svg>
+        </a>
+        <a href="https://www.twitch.tv/allloveolive" target="_blank" rel="noopener noreferrer" aria-label="Twitch">
+          <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
+            <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/>
+          </svg>
+        </a>
+      </div>
+
       <style jsx>{`
         .request-page {
           min-height: 100vh;
           display: flex;
           justify-content: center;
           align-items: flex-start;
-          padding: 2rem 1rem;
+          padding: 1rem;
           background-color: #2c1a3b;
           color: #f0e6f5;
           font-family: ${poppins.style.fontFamily};
@@ -382,24 +416,25 @@ export default function RequestPage() {
         }
         h1 {
           text-align: center;
-          font-size: 2.5rem;
-          margin-bottom: 0.5rem;
+          font-size: 1.8rem;
+          margin-top: -0.5rem;
+          margin-bottom: 0.15rem;
           color: #6b7c3a;
         }
         .intro {
           text-align: center;
-          font-size: 0.9rem;
+          font-size: 0.8rem;
           color: #c9b8e0;
-          margin: 0 0 1.25rem;
-          line-height: 1.4;
+          margin: 0 0 0.5rem;
+          line-height: 1.3;
         }
         form {
           display: flex;
           flex-direction: column;
-          gap: 0.8rem;
+          gap: 0.35rem;
         }
         .input-field {
-          padding: 0.75rem;
+          padding: 0.45rem 0.75rem;
           border-radius: 12px;
           border: 2px solid #3d2656;
           font-size: 1rem;
@@ -416,7 +451,7 @@ export default function RequestPage() {
         .input-field.dimmed { opacity: 0.4; }
         textarea.input-field {
           resize: vertical;
-          min-height: 90px;
+          min-height: 50px;
         }
         .song-section,
         .vibe-section {
@@ -550,11 +585,11 @@ export default function RequestPage() {
           transform: scale(1.05);
           background-color: #5a6830;
         }
-        .top-nav { margin-bottom: 0.5rem; }
+        .top-nav { margin-bottom: 0.25rem; }
         .back-arrow {
           background: transparent; border: 2px solid #a07cc5;
-          color: #c9b8e0; border-radius: 20px; padding: 0.35rem 0.9rem;
-          font-size: 0.9rem; cursor: pointer; transition: all 0.2s;
+          color: #c9b8e0; border-radius: 20px; padding: 0.2rem 0.6rem;
+          font-size: 0.75rem; cursor: pointer; transition: all 0.2s;
         }
         .back-arrow:hover { background: #a07cc5; color: white; }
         .error {
@@ -616,7 +651,7 @@ export default function RequestPage() {
           border-radius: 12px;
           border: none;
           background: #a07cc5;
-          color: #f0e6f5;
+          color: #2c1a3b;
           font-size: 1.2rem;
           font-weight: bold;
           cursor: pointer;
@@ -629,6 +664,23 @@ export default function RequestPage() {
           color: #6b7c3a;
           text-decoration: underline;
           cursor: pointer;
+        }
+
+        .socials {
+          position: fixed;
+          bottom: 1.5rem;
+          left: 50%;
+          transform: translateX(-50%);
+          display: flex;
+          gap: 1.5rem;
+          z-index: 100;
+        }
+        .socials a {
+          color: #a07cc5;
+          transition: color 0.2s;
+        }
+        .socials a:hover {
+          color: #d8b8ff;
         }
 
         @media (max-width: 480px) {

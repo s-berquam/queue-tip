@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
   if (!orderId) return NextResponse.json({ error: "No order ID" }, { status: 400 })
 
   // Fetch order to get metadata
-  const { result } = await squareClient.orders.get(orderId)
+  const result = await squareClient.orders.get(orderId)
   const metadata = result.order?.metadata
   const requestId = metadata?.request_id
   const durationBonus = parseInt(metadata?.duration_bonus ?? "0", 10)
