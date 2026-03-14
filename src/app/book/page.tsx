@@ -75,7 +75,7 @@ export default function BookPage() {
       setErrorMsg(error.message)
     } else {
       setSubmitted(true)
-      setTimeout(() => router.push("/home"), 3000)
+      setTimeout(() => router.push("/home"), 5000)
     }
   }
 
