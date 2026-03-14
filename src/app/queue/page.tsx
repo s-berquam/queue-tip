@@ -65,6 +65,7 @@ export default function QueuePage() {
     setOptInDone(true)
     localStorage.setItem("opt_in_shown", "true")
     setTimeout(() => setShowOptIn(false), 2000)
+
   }
 
   function handleOptInDismiss() {
@@ -269,8 +270,7 @@ export default function QueuePage() {
           <div className="popup optin-popup">
             {optInDone ? (
               <>
-                <div className="popup-icon">🎉</div>
-                <p>You're in! See you at the next one.</p>
+                <p>You're in! We'll keep you posted on upcoming events.</p>
               </>
             ) : (
               <>
