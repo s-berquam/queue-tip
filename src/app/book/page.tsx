@@ -75,17 +75,18 @@ export default function BookPage() {
       setErrorMsg(error.message)
     } else {
       setSubmitted(true)
+      setTimeout(() => router.push("/home"), 3000)
     }
   }
 
   if (submitted) {
     return (
       <main className="book-page" style={{ fontFamily: poppins.style.fontFamily }}>
-        <div className="container">
-          <div className="success-icon">🎉</div>
-          <h1 className={pacifico.className}>Request Received!</h1>
-          <p className="sub">Thanks for reaching out! I'll be in touch soon to discuss your event.</p>
-          <button className="home-btn" onClick={() => router.push("/home")}>⌂ Home</button>
+        <div className="modal-overlay">
+          <div className="modal">
+            <h2 className={pacifico.className}>Request Received!</h2>
+            <p>Thanks for reaching out! I'll be in touch soon to discuss your event.</p>
+          </div>
         </div>
         <div className="socials">
           <a href="https://www.facebook.com/alllovejams/" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
@@ -340,6 +341,24 @@ function Styles({ pacifico, poppins }: { pacifico: string; poppins: string }) {
         color: #6b7c3a;
         text-align: center;
         font-weight: bold;
+      }
+      .modal-overlay {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 1000; padding: 1rem;
+      }
+      .modal {
+        background: #3d2656; border: 2px solid #a07cc5;
+        border-radius: 20px; padding: 2rem 1.5rem;
+        max-width: 340px; width: 100%;
+        display: flex; flex-direction: column;
+        align-items: center; gap: 0.75rem; text-align: center;
+      }
+      .modal h2 {
+        font-size: 1.8rem; color: #6b7c3a; margin: 0;
+      }
+      .modal p {
+        font-size: 0.9rem; color: #c9b8e0; margin: 0;
       }
       @media (max-width: 430px) {
         .book-page {
