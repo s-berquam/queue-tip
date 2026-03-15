@@ -2,6 +2,10 @@
 
 import { useEffect, useRef, useState } from "react"
 import { supabase } from "lib/supabase"
+import { Pacifico, Poppins } from "next/font/google"
+
+const pacifico = Pacifico({ weight: "400", subsets: ["latin"] })
+const poppins = Poppins({ weight: ["300", "400", "600"], subsets: ["latin"] })
 
 type Request = {
   id: string
@@ -31,7 +35,6 @@ export default function Dashboard() {
   const [requests, setRequests] = useState<Request[]>([])
   const [toast, setToast] = useState<string | null>(null)
   const [vibeFilter, setVibeFilter] = useState<string | null>(null)
-  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const prevStatusRef = useRef<Record<string, string>>({})
 
   useEffect(() => {
@@ -58,9 +61,8 @@ export default function Dashboard() {
     setTimeout(() => setToast(null), 4000)
   }
 
-  async function updateStatus(id: string, status: Request["status"]) {
-    const { error } = await supabase.from("requests").update({ status }).eq("id", id)
-    if (error) console.error("Update error:", error)
+  async function updateStatusGroup(ids: string[], status: Request["status"]) {
+    await Promise.all(ids.map((id) => supabase.from("requests").update({ status }).eq("id", id)))
   }
 
   async function moderateSelfie(id: string, status: "approved" | "rejected") {
@@ -68,15 +70,29 @@ export default function Dashboard() {
       .from("requests")
       .update({ selfie_status: status })
       .eq("id", id)
-    if (error) console.error("Moderation error:", error)
+    if (error) { console.error("Moderation error:", error); return }
+    setRequests((prev) => prev.map((r) => r.id === id ? { ...r, selfie_url: null } : r))
   }
 
   useEffect(() => {
+    let activeEventId: string | null = null
+
     async function fetchRequests() {
-      const { data, error } = await supabase
+      const { data: eventData } = await supabase
+        .from("events")
+        .select("id")
+        .eq("is_active", true)
+        .single()
+      activeEventId = eventData?.id ?? null
+
+      const query = supabase
         .from("requests")
         .select("*")
         .order("datetime_requested", { ascending: false })
+
+      if (activeEventId) query.eq("event_id", activeEventId)
+
+      const { data, error } = await query
       if (data) {
         prevStatusRef.current = Object.fromEntries(data.map((r) => [r.id, r.status]))
         setRequests(data)
@@ -90,10 +106,13 @@ export default function Dashboard() {
       .channel("dashboard-requests")
       .on("postgres_changes", { event: "*", schema: "public", table: "requests" }, (payload) => {
         if (payload.eventType === "INSERT") {
-          setRequests((prev) => [payload.new as Request, ...prev])
-          prevStatusRef.current[payload.new.id] = payload.new.status
+          const r = payload.new as Request & { event_id: string | null }
+          if (r.event_id !== activeEventId) return
+          setRequests((prev) => [r, ...prev])
+          prevStatusRef.current[r.id] = r.status
         } else if (payload.eventType === "UPDATE") {
-          const updated = payload.new as Request
+          const updated = payload.new as Request & { event_id: string | null }
+          if (updated.event_id !== activeEventId) return
           const prevStatus = prevStatusRef.current[updated.id]
           if (prevStatus !== "up_next" && updated.status === "up_next") notifyUpNext(updated)
           prevStatusRef.current[updated.id] = updated.status
@@ -109,20 +128,32 @@ export default function Dashboard() {
     return () => { supabase.removeChannel(channel) }
   }, [])
 
-  const displayed = vibeFilter ? requests.filter((r) => r.vibe === vibeFilter) : requests
+  const songKey = (r: Request) => `${r.artist.toLowerCase()}|${r.song_title.toLowerCase()}`
+
+  const filtered = vibeFilter ? requests.filter((r) => r.vibe === vibeFilter) : requests
+
+  // Group by song+artist, preserving newest-first order
+  const groupMap = new Map<string, Request[]>()
+  for (const r of filtered) {
+    const key = songKey(r)
+    if (!groupMap.has(key)) groupMap.set(key, [])
+    groupMap.get(key)!.push(r)
+  }
+  const groups = Array.from(groupMap.values()).map((reqs) => {
+    const rep = reqs[0] // newest first
+    const selfieReq = reqs.find((r) => r.selfie_url && r.selfie_status === "pending") ?? null
+    const allPlayed = reqs.every((r) => r.status === "played")
+    const anyUpNext = reqs.some((r) => r.status === "up_next")
+    const totalTip = reqs.reduce((sum, r) => sum + (r.price_paid ?? 0), 0)
+    const totalBoost = reqs.reduce((sum, r) => sum + (r.votes ?? 0), 0)
+    return { key: songKey(rep), rep, reqs, selfieReq, allPlayed, anyUpNext, totalTip, totalBoost, count: reqs.length }
+  })
 
   return (
-    <main className="dashboard">
+    <main className="dashboard" style={{ fontFamily: poppins.style.fontFamily }}>
       {toast && <div className="toast">{toast}</div>}
 
-      {lightboxUrl && (
-        <div className="lightbox" onClick={() => setLightboxUrl(null)}>
-          <img src={lightboxUrl} alt="Selfie" className="lightbox-img" />
-          <span className="lightbox-close">✕</span>
-        </div>
-      )}
-
-      <h1>🎶 Live Song Requests</h1>
+<h1 className={pacifico.className}>Live Song Requests</h1>
 
       <div className="vibe-filters">
         <button className={`filter-btn${!vibeFilter ? " active" : ""}`} onClick={() => setVibeFilter(null)}>All</button>
@@ -136,12 +167,13 @@ export default function Dashboard() {
           <thead>
             <tr>
               <th>Song</th>
+              <th>#</th>
               <th>Artist</th>
               <th>Requester</th>
               <th>Vibe</th>
               <th>Notes</th>
-              <th>🔥</th>
               <th>Tip</th>
+              <th>Boost</th>
               <th>Status</th>
               <th>Time</th>
               <th>Selfie</th>
@@ -149,62 +181,51 @@ export default function Dashboard() {
             </tr>
           </thead>
           <tbody>
-            {displayed.map((req) => (
-              <tr key={req.id} className={req.status === "played" ? "played" : ""}>
-                <td>{req.song_title}</td>
-                <td>{req.artist}</td>
-                <td>{req.first_name}</td>
-                <td>{req.vibe || "—"}</td>
-                <td className="notes">{req.notes || "—"}</td>
-                <td className="votes">{req.votes}</td>
-                <td>${req.price_paid || 0}</td>
-                <td>{formatStatus(req.status)}</td>
+            {groups.map(({ key, rep, reqs, selfieReq, allPlayed, anyUpNext, totalTip, totalBoost, count }) => {
+              const ids = reqs.map((r) => r.id)
+              return (
+              <tr key={key} className={allPlayed ? "played" : ""}>
+                <td>{rep.song_title}</td>
+                <td><span className={`dupe-badge count-${Math.min(count, 4)}`}>×{count}</span></td>
+                <td>{rep.artist}</td>
+                <td>{rep.first_name}</td>
+                <td>{rep.vibe || "—"}</td>
+                <td className="notes">{rep.notes || "—"}</td>
+                <td>${totalTip}</td>
                 <td>
-                  {new Date(req.datetime_requested).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  {totalBoost > 0
+                    ? <span className={`boost-badge boost-${Math.min(totalBoost, 3)}`}>${totalBoost}</span>
+                    : <span className="no-boost">—</span>}
+                </td>
+                <td>{formatStatus(anyUpNext ? "up_next" : rep.status)}</td>
+                <td>
+                  {new Date(rep.datetime_requested).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </td>
                 <td className="selfie-cell">
-                  {req.selfie_url ? (
+                  {selfieReq ? (
                     <div className="selfie-controls">
-                      <img
-                        src={req.selfie_url}
-                        alt="selfie"
-                        className="selfie-thumb"
-                        onClick={() => setLightboxUrl(req.selfie_url)}
-                        title="Click to enlarge"
-                      />
-                      {req.selfie_status === "pending" && (
-                        <div className="selfie-actions">
-                          <span className="selfie-badge pending">Pending</span>
-                          <button className="mod-btn approve" onClick={() => moderateSelfie(req.id, "approved")}>✓ Approve</button>
-                          <button className="mod-btn deny" onClick={() => moderateSelfie(req.id, "rejected")}>✕ Deny</button>
-                        </div>
-                      )}
-                      {req.selfie_status === "approved" && (
-                        <div className="selfie-actions">
-                          <span className="selfie-badge published">Live</span>
-                          <button className="mod-btn deny" onClick={() => moderateSelfie(req.id, "rejected")}>✕ Remove</button>
-                        </div>
-                      )}
-                      {req.selfie_status === "rejected" && (
-                        <div className="selfie-actions">
-                          <span className="selfie-badge denied">Denied</span>
-                          <button className="mod-btn approve" onClick={() => moderateSelfie(req.id, "approved")}>✓ Approve</button>
-                        </div>
-                      )}
+                      <img src={selfieReq.selfie_url!} alt="selfie" className="selfie-thumb" />
+                      <img src={selfieReq.selfie_url!} alt="" className="selfie-preview" />
+                      <div className="selfie-actions">
+                        <span className="selfie-badge pending">Pending</span>
+                        <button className="mod-btn approve" onClick={() => moderateSelfie(selfieReq.id, "approved")}>✓ Approve</button>
+                        <button className="mod-btn deny" onClick={() => moderateSelfie(selfieReq.id, "rejected")}>✕ Deny</button>
+                      </div>
                     </div>
                   ) : (
                     <span className="no-selfie">—</span>
                   )}
                 </td>
                 <td className="actions">
-                  {req.status !== "up_next" && (
-                    <button className="up-next-btn" onClick={() => updateStatus(req.id, "up_next")}>▶ Up Next</button>
+                  {!anyUpNext && (
+                    <button className="up-next-btn" onClick={() => updateStatusGroup(ids, "up_next")}>▶ Up Next</button>
                   )}
-                  <button className="played-btn" onClick={() => updateStatus(req.id, "played")}>✓ Played</button>
-                  <button className="archive-btn" onClick={() => updateStatus(req.id, "archived")}>✕ Archive</button>
+                  <button className="played-btn" onClick={() => updateStatusGroup(ids, "played")}>✓ Played</button>
+                  <button className="archive-btn" onClick={() => updateStatusGroup(ids, "archived")}>✕ Archive</button>
                 </td>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
       </div>
@@ -217,7 +238,7 @@ export default function Dashboard() {
           color: #f0e6f5;
           position: relative;
         }
-        h1 { text-align: center; font-size: 2rem; margin-bottom: 1rem; }
+        h1 { text-align: center; font-size: 2rem; margin-bottom: 1rem; color: #6b7c3a; }
         .vibe-filters {
           display: flex; flex-wrap: wrap; gap: 0.5rem;
           justify-content: center; margin-bottom: 1rem;
@@ -228,20 +249,78 @@ export default function Dashboard() {
           color: #f0e6f5; font-size: 0.8rem; cursor: pointer; transition: all 0.2s;
         }
         .filter-btn.active { background: #a07cc5; color: white; }
-        .table-wrapper { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; min-width: 800px; }
-        th, td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid #6b586e; }
-        tr.played { background-color: #88805f; }
-        .votes { font-weight: bold; color: #FF6F61; }
+        .table-wrapper {
+          overflow-x: auto;
+          background: #3d2656;
+          border-radius: 14px;
+          border: 1px solid #4e3268;
+          box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+        }
+        table { width: 100%; border-collapse: collapse; min-width: 900px; }
+        thead tr { background: #2c1a3b; }
+        th {
+          padding: 0.75rem 1rem; text-align: left;
+          border-bottom: 2px solid #4e3268;
+          font-size: 0.78rem; font-weight: 600; color: #a07cc5;
+          text-transform: uppercase; letter-spacing: 0.07em;
+          white-space: nowrap;
+        }
+        td {
+          padding: 0.65rem 1rem; text-align: left;
+          border-bottom: 1px solid #4e3268;
+          font-size: 0.9rem; font-weight: 300; color: #c9b8e0;
+          vertical-align: middle;
+        }
+        tbody tr:last-child td { border-bottom: none; }
+        tbody tr:hover { background: rgba(160, 124, 197, 0.07); }
+        tr.played { background: rgba(136, 128, 95, 0.35); }
+        tr.played:hover { background: rgba(136, 128, 95, 0.45); }
+        .dupe-badge {
+          display: inline-block;
+          font-size: 0.78rem; font-weight: 600;
+          border: 1.5px solid; border-radius: 20px;
+          padding: 0.1rem 0.45rem; white-space: nowrap;
+        }
+        .count-1 { border-color: #6b586e; color: #6b586e; }
+        .count-2 { border-color: #7eb8f7; color: #7eb8f7; }
+        .count-3 { border-color: #ffd77d; color: #ffd77d; }
+        .count-4 { border-color: #ff6b6b; color: #ff6b6b; }
+        .boost-badge {
+          display: inline-block;
+          font-size: 0.78rem; font-weight: 600;
+          border: 1.5px solid; border-radius: 20px;
+          padding: 0.1rem 0.45rem; white-space: nowrap;
+        }
+        .boost-1 { border-color: #7eb8f7; color: #7eb8f7; }
+        .boost-2 { border-color: #ffd77d; color: #ffd77d; }
+        .boost-3 { border-color: #ff6b6b; color: #ff6b6b; }
+        .no-boost { color: #4e3268; }
         .notes { font-size: 0.85rem; color: #c9b8e0; max-width: 160px; white-space: pre-wrap; }
         .selfie-cell { vertical-align: middle; }
         .selfie-controls { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
         .selfie-thumb {
           width: 48px; height: 48px; object-fit: cover;
-          border-radius: 6px; cursor: pointer;
+          border-radius: 6px;
           border: 2px solid transparent; transition: border-color 0.2s;
         }
-        .selfie-thumb:hover { border-color: #d8b8ff; }
+        .selfie-thumb:hover {
+          border-color: #d8b8ff;
+        }
+        .selfie-controls { position: relative; }
+        .selfie-controls:hover .selfie-preview {
+          display: block;
+        }
+        .selfie-preview {
+          display: none;
+          position: fixed;
+          width: 240px; height: 240px; object-fit: cover;
+          border-radius: 12px;
+          border: 2px solid #d8b8ff;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+          z-index: 500;
+          transform: translate(-50%, -110%);
+          pointer-events: none;
+        }
         .selfie-actions {
           display: flex; flex-direction: column; align-items: center; gap: 0.25rem;
         }
@@ -254,38 +333,32 @@ export default function Dashboard() {
         .selfie-badge.denied { background: #ff6b6b; color: #fff; }
         .mod-btn {
           font-size: 0.72rem; padding: 0.2rem 0.5rem;
-          border-radius: 6px; border: none; cursor: pointer;
+          border-radius: 20px; border: 2px solid; cursor: pointer;
           font-weight: bold; white-space: nowrap; width: 100%;
+          background: transparent; transition: all 0.2s;
         }
-        .mod-btn.approve { background: #9effa3; color: #000; }
-        .mod-btn.deny { background: #ff6b6b; color: #fff; }
+        .mod-btn.approve { border-color: #7ecf8a; color: #7ecf8a; }
+        .mod-btn.approve:hover { background: #7ecf8a; color: #1a3b2c; }
+        .mod-btn.deny { border-color: #ff6b6b; color: #ff6b6b; }
+        .mod-btn.deny:hover { background: #ff6b6b; color: #fff; }
         .no-selfie { color: #6b586e; }
         .actions button {
           margin-right: 0.25rem; margin-bottom: 0.25rem;
-          padding: 0.25rem 0.5rem; font-size: 0.85rem;
-          border-radius: 6px; border: none; cursor: pointer; font-weight: bold;
+          padding: 0.3rem 0.6rem; font-size: 0.85rem;
+          border-radius: 20px; border: 2px solid; cursor: pointer;
+          font-weight: bold; background: transparent; transition: all 0.2s;
         }
-        .up-next-btn { background-color: #ffd77d; color: #000; font-size: 0.95rem !important; padding: 0.4rem 0.75rem !important; }
-        .played-btn { background-color: #9effa3; color: #000; }
-        .archive-btn { background-color: #ff6b6b; color: #fff; }
+        .up-next-btn { border-color: #7eb8f7; color: #7eb8f7; }
+        .up-next-btn:hover { background: #7eb8f7; color: #1a2c3b; }
+        .played-btn { border-color: #7ecf8a; color: #7ecf8a; }
+        .played-btn:hover { background: #7ecf8a; color: #1a3b2c; }
+        .archive-btn { border-color: #ff6b6b; color: #ff6b6b; }
+        .archive-btn:hover { background: #ff6b6b; color: #fff; }
         .toast {
           position: fixed; top: 1rem; left: 50%; transform: translateX(-50%);
           background-color: #ffd77d; color: #000; padding: 0.75rem 1.5rem;
           border-radius: 8px; font-weight: bold;
           box-shadow: 0 2px 6px rgba(0,0,0,0.3); z-index: 1000;
-        }
-        .lightbox {
-          position: fixed; inset: 0; background: rgba(0,0,0,0.85);
-          display: flex; align-items: center; justify-content: center;
-          z-index: 2000; cursor: pointer;
-        }
-        .lightbox-img {
-          max-width: 90vw; max-height: 90vh;
-          border-radius: 12px; object-fit: contain;
-        }
-        .lightbox-close {
-          position: absolute; top: 1.5rem; right: 1.5rem;
-          color: white; font-size: 1.5rem; cursor: pointer;
         }
         @media (max-width: 768px) {
           th, td { padding: 0.4rem 0.5rem; font-size: 0.9rem; }

@@ -99,10 +99,25 @@ export default function QueuePage() {
   }, [])
 
   useEffect(() => {
+    let activeEventId: string | null = null
+
     async function fetchQueue() {
+      const { data: eventData } = await supabase
+        .from("events")
+        .select("id")
+        .eq("is_active", true)
+        .single()
+      activeEventId = eventData?.id ?? null
+
+      if (!activeEventId) {
+        setRequests([])
+        return
+      }
+
       const { data } = await supabase
         .from("requests")
         .select("id, first_name, song_title, artist, vibe, votes, status, selfie_status")
+        .eq("event_id", activeEventId)
         .in("status", ["pending", "up_next"])
         .order("votes", { ascending: false })
       if (data) setRequests(data)
@@ -113,12 +128,14 @@ export default function QueuePage() {
       .channel("queue-realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "requests" }, (payload) => {
         if (payload.eventType === "INSERT") {
-          const r = payload.new as Request
+          const r = payload.new as Request & { event_id: string | null }
+          if (r.event_id !== activeEventId) return
           if (r.status === "pending" || r.status === "up_next") {
             setRequests((prev) => [...prev, r].sort((a, b) => b.votes - a.votes))
           }
         } else if (payload.eventType === "UPDATE") {
-          const r = payload.new as Request
+          const r = payload.new as Request & { event_id: string | null }
+          if (r.event_id !== activeEventId) return
           setRequests((prev) => {
             const rest = prev.filter((x) => x.id !== r.id)
             if (r.status === "pending" || r.status === "up_next") {

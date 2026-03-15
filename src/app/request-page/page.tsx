@@ -117,6 +117,13 @@ export default function RequestPage() {
       return
     }
 
+    const { data: eventData } = await supabase
+      .from("events")
+      .select("id")
+      .eq("is_active", true)
+      .single()
+    const activeEventId = eventData?.id ?? null
+
     const { data, error } = await supabase
       .from("requests")
       .insert([{
@@ -130,6 +137,7 @@ export default function RequestPage() {
         vibe: vibe,
         selfie_url: null,
         selfie_status: "none",
+        event_id: activeEventId,
       }])
       .select("id")
       .single()
