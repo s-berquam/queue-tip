@@ -587,6 +587,13 @@ export default function RequestPage() {
         .input-error { border-color: #ff6b6b !important; }
         .field-error { font-size: 0.78rem; color: #ff6b6b; margin: 0.15rem 0 0; padding-left: 0.25rem; }
         .input-field::placeholder { color: #7a6a8a; }
+        .input-field:-webkit-autofill,
+        .input-field:-webkit-autofill:hover,
+        .input-field:-webkit-autofill:focus {
+          -webkit-box-shadow: 0 0 0px 1000px #3d2656 inset;
+          -webkit-text-fill-color: #f0e6f5;
+          caret-color: #f0e6f5;
+        }
         .input-field.dimmed { opacity: 0.4; }
         textarea.input-field {
           resize: vertical;

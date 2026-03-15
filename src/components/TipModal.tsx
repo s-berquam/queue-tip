@@ -24,7 +24,7 @@ declare global {
 }
 
 interface SquarePayments {
-  card: () => Promise<SquareCard>
+  card: (options?: Record<string, unknown>) => Promise<SquareCard>
 }
 
 interface SquareCard {
