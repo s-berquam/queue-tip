@@ -17,6 +17,7 @@ type Request = {
   datetime_requested: string
   price_paid?: number
   votes: number
+  boost_amount?: number
   vibe: string | null
   selfie_url: string | null
   selfie_status: string | null
@@ -206,9 +207,9 @@ export default function Dashboard() {
     const allPlayed = reqs.every((r) => r.status === "played")
     const anyUpNext = reqs.some((r) => r.status === "up_next")
     const totalTip = reqs.reduce((sum, r) => sum + (r.price_paid ?? 0), 0)
-    const totalBoost = reqs.reduce((sum, r) => sum + (r.votes ?? 0), 0)
+    const totalBoost = reqs.reduce((sum, r) => sum + (r.boost_amount ?? 0), 0)
     return { key: songKey(rep), rep, reqs, selfieReq, allPlayed, anyUpNext, totalTip, totalBoost, count: reqs.length }
-  })
+  }).sort((a, b) => Number(b.anyUpNext) - Number(a.anyUpNext))
 
   return (
     <main className="dashboard" style={{ fontFamily: poppins.style.fontFamily }}>
@@ -331,7 +332,7 @@ export default function Dashboard() {
                 <td>${totalTip}</td>
                 <td>
                   {totalBoost > 0
-                    ? <span className={`boost-badge boost-${Math.min(totalBoost, 3)}`}>${totalBoost}</span>
+                    ? <span className={`boost-badge boost-${totalBoost >= 10 ? 3 : totalBoost >= 5 ? 2 : 1}`}>${totalBoost}</span>
                     : <span className="no-boost">—</span>}
                 </td>
                 <td>{formatStatus(anyUpNext ? "up_next" : rep.status)}</td>
