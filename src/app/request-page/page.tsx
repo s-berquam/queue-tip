@@ -14,7 +14,6 @@ const poppins = Poppins({ weight: ["300", "400", "600"], subsets: ["latin"] })
 const VIBES = ["Hype", "Sing-Along", "Feel-Good", "Slow Jam", "Throwback"] as const
 type Vibe = typeof VIBES[number]
 
-type Suggestion = { song_title: string; artist: string; request_count: number }
 type ItunesTrack = { trackId: number; trackName: string; artistName: string; artworkUrl100: string }
 type ItunesArtist = { artistId: number; artistName: string }
 
@@ -28,8 +27,6 @@ export default function RequestPage() {
   const [phone, setPhone] = useState("")
   const [notes, setNotes] = useState("")
   const [vibe, setVibe] = useState<Vibe | null>(null)
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([])
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
   const [loading, setLoading] = useState(false)
   const [emailError, setEmailError] = useState("")
   const [phoneError, setPhoneError] = useState("")
@@ -68,19 +65,8 @@ export default function RequestPage() {
     return /^\+?[\d\s\-]{7,15}$/.test(phone)
   }
 
-  async function handleVibeSelect(selected: Vibe) {
+  function handleVibeSelect(selected: Vibe) {
     setVibe(selected)
-    setSuggestions([])
-    setLoadingSuggestions(true)
-    try {
-      const res = await fetch(`/api/suggestions?vibe=${encodeURIComponent(selected)}`)
-      const json = await res.json()
-      setSuggestions(json.suggestions ?? [])
-    } catch {
-      // suggestions are optional
-    } finally {
-      setLoadingSuggestions(false)
-    }
   }
 
   function handleDjChoice() {
@@ -93,7 +79,6 @@ export default function RequestPage() {
     if (value.trim()) {
       setDjChoice(false)
       setVibe(null)
-      setSuggestions([])
     }
     clearTimeout(itunesDebounceRef.current)
     if (value.trim().length >= 2) {
@@ -144,12 +129,6 @@ export default function RequestPage() {
     setArtist(track.artistName)
     setItunesOpen(false)
     setItunesTracks([])
-    setDjChoice(false)
-  }
-
-  function applySuggestion(s: Suggestion) {
-    setSong(s.song_title)
-    setArtist(s.artist)
     setDjChoice(false)
   }
 
@@ -401,7 +380,7 @@ export default function RequestPage() {
               <button
                 type="button"
                 className={`dj-choice-btn${djChoice ? " active" : ""}${song.trim() && !djChoice ? " inactive" : ""}`}
-                onClick={djChoice ? () => { setDjChoice(false); setVibe(null); setSuggestions([]) } : handleDjChoice}
+                onClick={djChoice ? () => { setDjChoice(false); setVibe(null) } : handleDjChoice}
                 disabled={!!song.trim() && !djChoice}
               >
                 {djChoice ? "Cancel" : "DJ's Choice"}
@@ -425,19 +404,6 @@ export default function RequestPage() {
                   </button>
                 ))}
               </div>
-              {loadingSuggestions && <p className="suggestions-hint">Finding popular songs...</p>}
-              {!loadingSuggestions && suggestions.length > 0 && (
-                <>
-                  <p className="suggestions-hint">Popular {vibe} picks — tap to fill in:</p>
-                  <div className="suggestion-chips">
-                    {suggestions.map((s, i) => (
-                      <button key={i} type="button" className="suggestion-chip" onClick={() => applySuggestion(s)}>
-                        {s.song_title} – {s.artist}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
             </div>
           )}
 
@@ -687,28 +653,6 @@ export default function RequestPage() {
           background: #a07cc5;
           color: white;
         }
-        .suggestions-hint {
-          font-size: 0.82rem;
-          color: #c9b8e0;
-          margin: 0 0 0.4rem;
-        }
-        .suggestion-chips {
-          display: flex;
-          flex-direction: column;
-          gap: 0.3rem;
-        }
-        .suggestion-chip {
-          padding: 0.4rem 0.75rem;
-          border-radius: 8px;
-          border: none;
-          background: #3d2656;
-          color: #f0e6f5;
-          font-size: 0.85rem;
-          cursor: pointer;
-          text-align: left;
-          transition: background 0.2s;
-        }
-        .suggestion-chip:hover { background: #4e3268; }
         .tip-section {
           display: flex;
           flex-direction: column;
