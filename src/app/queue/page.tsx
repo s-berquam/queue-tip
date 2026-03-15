@@ -21,9 +21,8 @@ type Request = {
 }
 
 const BOOST_TIERS = [
-  { amount: 2, label: "$2 — Small boost" },
-  { amount: 5, label: "$5 — Big boost" },
-  { amount: 10, label: "$10 — Jump to the top" },
+  { amount: 2, label: "$2 — Move up 2 spots" },
+  { amount: 5, label: "$5 — Jump to the top" },
 ]
 
 const SELFIE_TIERS = [

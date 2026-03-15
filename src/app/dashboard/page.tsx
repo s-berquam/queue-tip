@@ -332,7 +332,7 @@ export default function Dashboard() {
                 <td>${totalTip}</td>
                 <td>
                   {totalBoost > 0
-                    ? <span className={`boost-badge boost-${totalBoost >= 10 ? 3 : totalBoost >= 5 ? 2 : 1}`}>${totalBoost}</span>
+                    ? <span className={`boost-badge boost-${totalBoost >= 5 ? 2 : 1}`}>${totalBoost}</span>
                     : <span className="no-boost">—</span>}
                 </td>
                 <td>{formatStatus(anyUpNext ? "up_next" : rep.status)}</td>
