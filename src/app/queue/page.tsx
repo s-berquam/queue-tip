@@ -144,6 +144,13 @@ export default function QueuePage() {
 
     const channel = supabase
       .channel("queue-realtime")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "events" }, (payload) => {
+        const updated = payload.new as { id: string; is_active: boolean }
+        if (updated.id === activeEventId && !updated.is_active) {
+          setRequests([])
+          activeEventId = null
+        }
+      })
       .on("postgres_changes", { event: "*", schema: "public", table: "requests" }, (payload) => {
         if (payload.eventType === "INSERT") {
           const r = payload.new as Request & { event_id: string | null }
