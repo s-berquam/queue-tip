@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { supabase } from "lib/supabase"
 import { v4 as uuidv4 } from "uuid"
 import Link from "next/link"
@@ -14,6 +14,8 @@ const VIBES = ["Hype", "Sing-Along", "Feel-Good", "Slow Jam", "Throwback"] as co
 type Vibe = typeof VIBES[number]
 
 type Suggestion = { song_title: string; artist: string; request_count: number }
+type ItunesTrack = { trackId: number; trackName: string; artistName: string; artworkUrl100: string }
+type ItunesArtist = { artistId: number; artistName: string }
 
 export default function RequestPage() {
   const router = useRouter()
@@ -28,10 +30,34 @@ export default function RequestPage() {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [loadingSuggestions, setLoadingSuggestions] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [errorMsg, setErrorMsg] = useState("")
+  const [emailError, setEmailError] = useState("")
+  const [phoneError, setPhoneError] = useState("")
   const [submitted, setSubmitted] = useState<{ song: string; artist: string; requestId: string } | null>(null)
   const [tipAmount, setTipAmount] = useState<number | null>(null)
   const [tipping, setTipping] = useState(false)
+  const [firstNameError, setFirstNameError] = useState(false)
+  const firstNameRef = useRef<HTMLInputElement>(null)
+  const [itunesTracks, setItunesTracks] = useState<ItunesTrack[]>([])
+  const [itunesOpen, setItunesOpen] = useState(false)
+  const itunesDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const itunesDropdownRef = useRef<HTMLDivElement>(null)
+  const [artistSuggestions, setArtistSuggestions] = useState<ItunesArtist[]>([])
+  const [artistOpen, setArtistOpen] = useState(false)
+  const artistDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const artistDropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleMouseDown(e: MouseEvent) {
+      if (itunesDropdownRef.current && !itunesDropdownRef.current.contains(e.target as Node)) {
+        setItunesOpen(false)
+      }
+      if (artistDropdownRef.current && !artistDropdownRef.current.contains(e.target as Node)) {
+        setArtistOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleMouseDown)
+    return () => document.removeEventListener("mousedown", handleMouseDown)
+  }, [])
 
   function validateEmail(email: string) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
@@ -68,6 +94,56 @@ export default function RequestPage() {
       setVibe(null)
       setSuggestions([])
     }
+    clearTimeout(itunesDebounceRef.current)
+    if (value.trim().length >= 2) {
+      itunesDebounceRef.current = setTimeout(async () => {
+        const term = `${artist} ${value}`.trim()
+        const res = await fetch(`/api/itunes-search?term=${encodeURIComponent(term)}`)
+        const json = await res.json()
+        const filtered = (json.results ?? []).filter((t: ItunesTrack) =>
+          t.trackName.toLowerCase().includes(value.trim().toLowerCase()) &&
+          (!artist.trim() || t.artistName.toLowerCase().includes(artist.trim().toLowerCase()))
+        )
+        setItunesTracks(filtered)
+        setItunesOpen(filtered.length > 0)
+      }, 400)
+    } else {
+      setItunesTracks([])
+      setItunesOpen(false)
+    }
+  }
+
+  function handleArtistInput(value: string) {
+    setArtist(value)
+    clearTimeout(artistDebounceRef.current)
+    if (value.trim().length >= 2) {
+      artistDebounceRef.current = setTimeout(async () => {
+        const res = await fetch(`/api/itunes-search?term=${encodeURIComponent(value)}&entity=musicArtist`)
+        const json = await res.json()
+        const filtered = (json.results ?? []).filter((a: ItunesArtist) =>
+          a.artistName.toLowerCase().includes(value.trim().toLowerCase())
+        )
+        setArtistSuggestions(filtered)
+        setArtistOpen(filtered.length > 0)
+      }, 400)
+    } else {
+      setArtistSuggestions([])
+      setArtistOpen(false)
+    }
+  }
+
+  function applyArtist(a: ItunesArtist) {
+    setArtist(a.artistName)
+    setArtistOpen(false)
+    setArtistSuggestions([])
+  }
+
+  function applyItunesTrack(track: ItunesTrack) {
+    setSong(track.trackName)
+    setArtist(track.artistName)
+    setItunesOpen(false)
+    setItunesTracks([])
+    setDjChoice(false)
   }
 
   function applySuggestion(s: Suggestion) {
@@ -78,41 +154,34 @@ export default function RequestPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setErrorMsg("")
+    setEmailError("")
+    setPhoneError("")
     setLoading(true)
 
     if (!firstName.trim()) {
-      setErrorMsg("First name is required.")
+      setFirstNameError(true)
+      firstNameRef.current?.focus()
       setLoading(false)
       return
     }
-    if (!artist.trim()) {
-      setErrorMsg("Artist is required.")
+    if (!artist.trim() || (!djChoice && !song.trim()) || (djChoice && !vibe)) {
       setLoading(false)
       return
     }
-    if (!djChoice && !song.trim()) {
-      setErrorMsg("Enter a song title or tap \"DJ's Choice\".")
-      setLoading(false)
-      return
-    }
-    if (djChoice && !vibe) {
-      setErrorMsg("Pick a vibe so the DJ knows what to play.")
-      setLoading(false)
-      return
-    }
+
+    let hasContactError = false
     if (!email.trim() && !phone.trim()) {
-      setErrorMsg("Please provide either an email or phone number.")
-      setLoading(false)
-      return
+      setEmailError("Email or phone is required.")
+      setPhoneError("Email or phone is required.")
+      hasContactError = true
+    } else if (email && !validateEmail(email)) {
+      setEmailError("Invalid email format.")
+      hasContactError = true
+    } else if (phone && !validatePhone(phone)) {
+      setPhoneError("Invalid phone format.")
+      hasContactError = true
     }
-    if (email && !validateEmail(email)) {
-      setErrorMsg("Invalid email format.")
-      setLoading(false)
-      return
-    }
-    if (phone && !validatePhone(phone)) {
-      setErrorMsg("Invalid phone format. Include country code if needed.")
+    if (hasContactError) {
       setLoading(false)
       return
     }
@@ -144,7 +213,6 @@ export default function RequestPage() {
 
     if (error) {
       setLoading(false)
-      setErrorMsg(`Supabase insert error: ${error.message}`)
       return
     }
 
@@ -255,37 +323,86 @@ export default function RequestPage() {
         )}
 
         <form onSubmit={handleSubmit}>
-          {errorMsg && <p className="error">{errorMsg}</p>}
-
           <input
-            className="input-field"
+            ref={firstNameRef}
+            className={`input-field${firstNameError ? " input-error" : ""}`}
             name="first-name"
             autoComplete="given-name"
             placeholder="Your First Name"
             value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
+            onChange={(e) => { setFirstName(e.target.value); if (e.target.value.trim()) setFirstNameError(false) }}
           />
+          {firstNameError && <p className="field-error">First name is required to continue.</p>}
 
-          <input
-            className="input-field"
-            name="artist"
-            autoComplete="off"
-            placeholder="Artist *"
-            value={artist}
-            onChange={(e) => setArtist(e.target.value)}
-          />
+          <div ref={artistDropdownRef} style={{ position: "relative" }}>
+            <input
+              className="input-field"
+              name="artist"
+              autoComplete="off"
+              placeholder="Artist *"
+              value={artist}
+              onFocus={(e) => {
+                if (!firstName.trim()) {
+                  e.preventDefault()
+                  e.currentTarget.blur()
+                  setFirstNameError(true)
+                  firstNameRef.current?.focus()
+                  return
+                }
+                if (artistSuggestions.length > 0) setArtistOpen(true)
+              }}
+              onChange={(e) => handleArtistInput(e.target.value)}
+            />
+            {artistOpen && artistSuggestions.length > 0 && (
+              <div className="itunes-dropdown">
+                {artistSuggestions.map((a) => (
+                  <button
+                    key={a.artistId}
+                    type="button"
+                    className="itunes-item"
+                    onMouseDown={(e) => { e.preventDefault(); applyArtist(a) }}
+                  >
+                    <div className="itunes-text">
+                      <div className="itunes-track">{a.artistName}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div className="song-section">
             <div className="song-row">
               {!djChoice && (
-                <input
-                  className="input-field song-input"
-                  name="song"
-                  autoComplete="off"
-                  placeholder="Song title *"
-                  value={song}
-                  onChange={(e) => handleSongInput(e.target.value)}
-                />
+                <div ref={itunesDropdownRef} style={{ position: "relative", flex: 1 }}>
+                  <input
+                    className="input-field song-input"
+                    name="song"
+                    autoComplete="off"
+                    placeholder="Song title *"
+                    value={song}
+                    onChange={(e) => handleSongInput(e.target.value)}
+                    onFocus={() => { if (itunesTracks.length > 0) setItunesOpen(true) }}
+                  />
+                  {itunesOpen && itunesTracks.length > 0 && (
+                    <div className="itunes-dropdown">
+                      {itunesTracks.map((track) => (
+                        <button
+                          key={track.trackId}
+                          type="button"
+                          className="itunes-item"
+                          onMouseDown={(e) => { e.preventDefault(); applyItunesTrack(track) }}
+                        >
+                          <img src={track.artworkUrl100} alt="" className="itunes-art" onError={(e) => { (e.target as HTMLImageElement).style.display = "none" }} />
+                          <div className="itunes-text">
+                            <div className="itunes-track">{track.trackName}</div>
+                            <div className="itunes-artist">{track.artistName}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               )}
               <button
                 type="button"
@@ -331,23 +448,25 @@ export default function RequestPage() {
           )}
 
           <input
-            className="input-field"
+            className={`input-field${emailError ? " input-error" : ""}`}
             type="email"
             name="email"
             autoComplete="email"
             placeholder="Email (optional if phone provided)"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => { setEmail(e.target.value); setEmailError(""); setPhoneError("") }}
           />
+          {emailError && <p className="field-error">{emailError}</p>}
           <input
-            className="input-field"
+            className={`input-field${phoneError ? " input-error" : ""}`}
             type="tel"
             name="phone"
             autoComplete="tel"
             placeholder="Phone (optional if email provided)"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={(e) => { setPhone(e.target.value); setPhoneError(""); setEmailError("") }}
           />
+          {phoneError && <p className="field-error">{phoneError}</p>}
           <textarea
             className="input-field"
             name="notes"
@@ -471,6 +590,8 @@ export default function RequestPage() {
           transition: border-color 0.2s;
         }
         .input-field:focus { border-color: #a07cc5; }
+        .input-error { border-color: #ff6b6b !important; }
+        .field-error { font-size: 0.78rem; color: #ff6b6b; margin: 0.15rem 0 0; padding-left: 0.25rem; }
         .input-field::placeholder { color: #7a6a8a; }
         .input-field.dimmed { opacity: 0.4; }
         textarea.input-field {
@@ -494,7 +615,31 @@ export default function RequestPage() {
           gap: 0.5rem;
           align-items: stretch;
         }
-        .song-input { flex: 1; }
+        .song-input { flex: 1; width: 100%; }
+        .itunes-dropdown {
+          position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+          background: #3d2656; border: 2px solid #a07cc5; border-radius: 12px;
+          z-index: 200; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+        .itunes-item {
+          display: flex; align-items: center; gap: 0.6rem;
+          width: 100%; padding: 0.5rem 0.75rem;
+          background: transparent; border: none; border-bottom: 1px solid #4e3268;
+          color: #f0e6f5; font-family: ${poppins.style.fontFamily};
+          cursor: pointer; text-align: left; transition: background 0.15s;
+        }
+        .itunes-item:last-child { border-bottom: none; }
+        .itunes-item:hover { background: #4e3268; }
+        .itunes-art { width: 40px; height: 40px; border-radius: 6px; flex-shrink: 0; }
+        .itunes-text { flex: 1; min-width: 0; }
+        .itunes-track {
+          font-size: 0.9rem; font-weight: 600;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .itunes-artist {
+          font-size: 0.78rem; color: #c9b8e0; margin-top: 0.1rem;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
         .dj-choice-btn {
           flex-shrink: 0;
           padding: 0 1rem;
@@ -616,11 +761,6 @@ export default function RequestPage() {
           font-size: 0.75rem; cursor: pointer; transition: all 0.2s;
         }
         .back-arrow:hover { background: #a07cc5; color: white; }
-        .error {
-          color: #6b7c3a;
-          text-align: center;
-          font-weight: bold;
-        }
 
         /* Success modal */
         .modal-overlay {

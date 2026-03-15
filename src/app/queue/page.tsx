@@ -48,11 +48,15 @@ export default function QueuePage() {
   const [showOptIn, setShowOptIn] = useState(false)
   const [optInSubmitting, setOptInSubmitting] = useState(false)
   const [optInDone, setOptInDone] = useState(false)
+  const [djChoiceResult, setDjChoiceResult] = useState<{ song: string; artist: string } | null>(null)
   const successTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const myRequestIdRef = useRef<string | null>(null)
+  const prevSongTitleRef = useRef<string>("")
 
   useEffect(() => {
     const id = localStorage.getItem("my_request_id")
     setMyRequestId(id)
+    myRequestIdRef.current = id
     const alreadySeen = localStorage.getItem("opt_in_shown")
     if (id && !alreadySeen) setShowOptIn(true)
   }, [])
@@ -99,6 +103,13 @@ export default function QueuePage() {
   }, [])
 
   useEffect(() => {
+    const id = myRequestIdRef.current
+    if (!id) return
+    const mine = requests.find((r) => r.id === id)
+    if (mine) prevSongTitleRef.current = mine.song_title
+  }, [requests])
+
+  useEffect(() => {
     let activeEventId: string | null = null
 
     async function fetchQueue() {
@@ -136,6 +147,10 @@ export default function QueuePage() {
         } else if (payload.eventType === "UPDATE") {
           const r = payload.new as Request & { event_id: string | null }
           if (r.event_id !== activeEventId) return
+          if (r.id === myRequestIdRef.current && prevSongTitleRef.current === "" && r.song_title !== "") {
+            setDjChoiceResult({ song: r.song_title, artist: r.artist })
+            prevSongTitleRef.current = r.song_title
+          }
           setRequests((prev) => {
             const rest = prev.filter((x) => x.id !== r.id)
             if (r.status === "pending" || r.status === "up_next") {
@@ -235,6 +250,17 @@ export default function QueuePage() {
           >♥</span>
         ))}
       </div>
+
+      {/* DJ's Choice result popup */}
+      {djChoiceResult && (
+        <div className="popup-overlay">
+          <div className="popup dj-result-popup">
+            <div className="popup-icon">🎵</div>
+            <p>The DJ chose <strong>{djChoiceResult.song}</strong> by <strong>{djChoiceResult.artist}</strong> for you!</p>
+            <button onClick={() => setDjChoiceResult(null)}>Got it</button>
+          </div>
+        </div>
+      )}
 
       {/* Tip success popup */}
       {tipSuccess && (
@@ -698,6 +724,8 @@ export default function QueuePage() {
           padding: 0;
         }
         .optin-no-btn:hover { color: #c9b8e0; }
+        .dj-result-popup { border-color: #6b7c3a; }
+        .dj-result-popup strong { color: #6b7c3a; }
 
         @media (max-width: 480px) {
           h1 { font-size: 2.8rem; }
