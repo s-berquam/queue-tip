@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
   try {
     const { data: row } = await supabase
       .from("requests")
-      .select("price_paid, selfie_duration")
+      .select("price_paid, selfie_duration, votes")
       .eq("id", requestId)
       .single()
 
@@ -87,8 +87,10 @@ export async function POST(req: NextRequest) {
     if (tipType === "dj") {
       await supabase.from("requests").update({ price_paid: newPricePaid }).eq("id", requestId)
     } else if (tipType === "boost") {
-      await supabase.rpc("increment_votes", { row_id: requestId })
-      await supabase.from("requests").update({ price_paid: newPricePaid }).eq("id", requestId)
+      await supabase.from("requests").update({
+        votes: (row?.votes ?? 0) + 1,
+        price_paid: newPricePaid,
+      }).eq("id", requestId)
     } else if (tipType === "selfie") {
       const bonus = SELFIE_DURATIONS[tipAmount] ?? 0
       await supabase.from("requests").update({
