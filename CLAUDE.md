@@ -37,7 +37,7 @@ Supabase DB ← Square Payments ← iTunes Search
 ### Pages & Their Roles
 - `/home` — Landing page
 - `/request-page` — Song request form (name, artist, vibe, optional tip)
-- `/queue` — Live queue display; guests can boost requests with tips
+- `/queue` — Live queue display; guests can boost requests with tips ($2 = up 2 spots, $5 = jump to top); ordered by `boost_amount` descending
 - `/dashboard` — DJ admin: manage event lifecycle, move request statuses, assign songs for DJ's Choice requests
 - `/selfie` — Selfie upload + display
 - `/monitor` — Read-only realtime queue display
@@ -49,6 +49,9 @@ The DJ drives status transitions from the dashboard. When an event ends, all rem
 
 ### Realtime Pattern
 Pages subscribe to Supabase Realtime channels scoped to the active `event_id`. When the event changes, the channel is reset and requests are refetched. The active event is the single row in `events` where `is_active = true`.
+
+### Queue Ordering
+Queue is ordered by `boost_amount` descending (then `up_next` status pins to top). When a guest pays to boost, `square-charge` queries the live queue ordered by `boost_amount`, calculates the target position, and sets the request's `boost_amount` to `target.boost_amount + 1` to slot it in correctly.
 
 ### Payment Flow
 `TipModal.tsx` (`src/components/`) handles Square card tokenization. API routes under `/api/` (`boost-tip`, `dj-tip`, `selfie-tip`, `square-charge`) process payments server-side. Idempotency keys (UUID) prevent duplicate charges.
