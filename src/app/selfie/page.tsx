@@ -21,10 +21,19 @@ function SelfiePage() {
   const [uploading, setUploading] = useState(false)
   const [done, setDone] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
+  const [isPortrait, setIsPortrait] = useState(false)
   const cameraRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setRequestId(localStorage.getItem("my_request_id"))
+  }, [])
+
+  useEffect(() => {
+    const mq = window.matchMedia("(orientation: portrait)")
+    setIsPortrait(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setIsPortrait(e.matches)
+    mq.addEventListener("change", handler)
+    return () => mq.removeEventListener("change", handler)
   }, [])
 
   function handleCapture(e: React.ChangeEvent<HTMLInputElement>) {
@@ -104,6 +113,11 @@ function SelfiePage() {
               {uploading ? "Uploading..." : "Submit Selfie"}
             </button>
           </div>
+        ) : isPortrait ? (
+          <div className="rotate-prompt">
+            <div className="rotate-icon">↺</div>
+            <p>Rotate your phone to landscape to take your selfie</p>
+          </div>
         ) : (
           <button className="camera-btn" onClick={() => cameraRef.current?.click()}>
             Open Camera
@@ -172,6 +186,32 @@ function Styles({ pacifico, poppins }: { pacifico: string; poppins: string }) {
         font-size: 0.9rem;
         color: #c9b8e0;
         margin: 0;
+      }
+      .selfie-page .rotate-prompt {
+        width: 100%;
+        padding: 1.5rem 1rem;
+        border-radius: 16px;
+        border: 2px dashed #a07cc5;
+        background: #3d2656;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+      }
+      .selfie-page .rotate-icon {
+        font-size: 2.5rem;
+        color: #d8b8ff;
+        animation: rotatePulse 1.5s ease-in-out infinite;
+      }
+      .selfie-page .rotate-prompt p {
+        color: #c9b8e0;
+        font-size: 0.95rem;
+        margin: 0;
+      }
+      @keyframes rotatePulse {
+        0%, 100% { transform: rotate(0deg); }
+        50% { transform: rotate(90deg); }
       }
       .selfie-page .camera-btn {
         width: 100%;

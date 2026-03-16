@@ -26,9 +26,9 @@ const BOOST_TIERS = [
 ]
 
 const SELFIE_TIERS = [
-  { amount: 1, label: "$1 — +15s" },
-  { amount: 3, label: "$3 — +45s" },
-  { amount: 5, label: "$5 — +90s" },
+  { amount: 1, label: "$1 — +5s" },
+  { amount: 3, label: "$3 — +10s" },
+  { amount: 5, label: "$5 — +15s" },
 ]
 
 function sortQueue(reqs: Request[]) {
@@ -378,8 +378,8 @@ export default function QueuePage() {
               <path d="M2 24 L2 10 L13 18 L26 2 L39 18 L50 10 L50 24 Z" fill="#a07cc5" stroke="#d8b8ff" strokeWidth="1.5" strokeLinejoin="round"/>
               <rect x="2" y="22" width="48" height="6" rx="2" fill="#6b3fa0" stroke="#d8b8ff" strokeWidth="1.2"/>
               <circle cx="26" cy="5" r="3" fill="#6b7c3a"/>
-              <circle cx="13" cy="19" r="2.2" fill="#f0e6f5"/>
-              <circle cx="39" cy="19" r="2.2" fill="#f0e6f5"/>
+              <circle cx="13" cy="19" r="2.2" fill="#f0e6f5" className="gem gem-1"/>
+              <circle cx="39" cy="19" r="2.2" fill="#f0e6f5" className="gem gem-2"/>
               <circle cx="2" cy="11" r="1.8" fill="#6b7c3a"/>
               <circle cx="50" cy="11" r="1.8" fill="#6b7c3a"/>
             </svg>
@@ -531,6 +531,20 @@ export default function QueuePage() {
         @keyframes pulse {
           0%, 100% { transform: scale(1); }
           50% { transform: scale(1.3); }
+        }
+        :global(.gem) {
+          transform-box: fill-box;
+          transform-origin: center;
+          animation: sparkle 2.4s ease-in-out infinite;
+        }
+        :global(.gem-2) {
+          animation-delay: 1.2s;
+        }
+        @keyframes sparkle {
+          0%, 100% { opacity: 1; transform: scale(1); filter: none; }
+          40% { opacity: 0.15; transform: scale(0.6); filter: none; }
+          50% { opacity: 1; transform: scale(1.5); filter: drop-shadow(0 0 3px #fff); }
+          60% { opacity: 0.15; transform: scale(0.6); filter: none; }
         }
         .search-wrap {
           max-width: 600px; margin: 0 auto 1rem;

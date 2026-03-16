@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { SquareClient, SquareEnvironment } from "square"
 
 const TIP_TIERS: Record<string, { amountCents: number; durationBonus: number; label: string }> = {
-  "1": { amountCents: 100, durationBonus: 15, label: "Selfie Boost (+15s on screen)" },
-  "3": { amountCents: 300, durationBonus: 45, label: "Selfie Boost (+45s on screen)" },
-  "5": { amountCents: 500, durationBonus: 90, label: "Selfie Boost (+90s on screen)" },
+  "1": { amountCents: 100, durationBonus: 5,  label: "Selfie Boost (+5s on screen)" },
+  "3": { amountCents: 300, durationBonus: 10, label: "Selfie Boost (+10s on screen)" },
+  "5": { amountCents: 500, durationBonus: 15, label: "Selfie Boost (+15s on screen)" },
 }
 
 const client = new SquareClient({

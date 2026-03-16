@@ -15,7 +15,18 @@ export async function GET(req: NextRequest) {
   try {
     const res = await fetch(url.toString())
     const json = await res.json()
-    return NextResponse.json({ results: json.results ?? [] })
+    const results = json.results ?? []
+
+    if (entity === "musicArtist") {
+      const deduped = [
+        ...new Map(
+          results.map((a: { artistName?: string }) => [a.artistName, a])
+        ).values()
+      ]
+      return NextResponse.json({ results: deduped })
+    }
+
+    return NextResponse.json({ results })
   } catch {
     return NextResponse.json({ results: [] })
   }
