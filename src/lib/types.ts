@@ -7,6 +7,9 @@ export type Request = {
   artist: string
   vibe: string | null
   notes: string | null
+  notes_category?: string | null
+  notes_flag?: boolean | null
+  notes_summary?: string | null
   status: RequestStatus
   boost_amount?: number
   price_paid?: number
