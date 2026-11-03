@@ -327,7 +327,14 @@ export default function Dashboard() {
                 <td>{rep.artist}</td>
                 <td>{rep.first_name}</td>
                 <td>{rep.vibe || "—"}</td>
-                <td className="notes">{rep.notes || "—"}</td>
+                <td className="notes">
+                  {rep.notes_category && rep.notes ? (
+                    <span className={`note-badge${rep.notes_flag ? " review" : ""}`} title={rep.notes_summary ?? undefined}>
+                      {rep.notes_flag ? "Review" : rep.notes_category.replace("_", " ")}
+                    </span>
+                  ) : null}
+                  {rep.notes || "—"}
+                </td>
                 <td>${totalTip}</td>
                 <td>
                   {totalBoost > 0
@@ -524,6 +531,8 @@ export default function Dashboard() {
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .notes { font-size: 0.85rem; color: #c9b8e0; max-width: 160px; white-space: pre-wrap; }
+        .note-badge { display: block; width: fit-content; margin-bottom: 4px; padding: 1px 8px; border-radius: 999px; font-size: 0.7rem; text-transform: capitalize; background: #14b8a6; color: #04201d; font-weight: 600; }
+        .note-badge.review { background: #7a1f2b; color: #ffd9de; font-weight: 700; }
         .selfie-cell { vertical-align: middle; }
         .selfie-controls { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
         .selfie-thumb {

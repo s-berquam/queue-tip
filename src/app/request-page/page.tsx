@@ -208,6 +208,15 @@ export default function RequestPage() {
     }
 
     const requestId = data.id
+
+    // Best-effort LLM triage of the guest note; never blocks or fails the request.
+    if (notes.trim()) {
+      fetch("/api/triage-note", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId }),
+      }).catch(() => {})
+    }
     const songLabel = djChoice ? "DJ's Choice" : song.trim()
     const artistLabel = artist.trim()
 
