@@ -202,5 +202,5 @@ To deploy your own instance:
 ## Contact
 
 - Email: sarah.berquam@gmail.com
-- Instagram: [@all_love_jams](https://instagram.com/all_love_jams)
+- Instagram: [@all_love_jams](https://instagram.com/queenofclubsfm)
 - LinkedIn: [sarahberquam](https://www.linkedin.com/in/sarahberquam/)
