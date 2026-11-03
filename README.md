@@ -18,6 +18,7 @@
 - **Event Opt-In** — Guests can opt in to event notifications from Queen of Clubs Collective
 - **DJ Booking** — Guests can submit booking inquiries via the Book With Us page
 - **DJ Dashboard** — Real-time admin view at `/dashboard` with vibe filtering and queue controls (Pending → Up Next → Played → Archived)
+- **AI Note Triage** — Guest notes are classified by Claude (Anthropic API) into a category, a needs-review flag, and a one-line summary; the dashboard shows a category badge, or a red **Review** badge for notes that need a look
 - **Real-time Queue** — Powered by Supabase Realtime; requests update instantly across all clients
 - **Social Links** — Facebook, Instagram, Discord, and Twitch links on every user-facing page
 
@@ -33,6 +34,7 @@
 | Database | Supabase (PostgreSQL) |
 | Realtime | Supabase Realtime |
 | Payments | Square (Sandbox + Production) |
+| AI | Anthropic API (Claude Haiku) via `@anthropic-ai/sdk` |
 | SMS | Twilio |
 | Hosting | Vercel |
 
@@ -49,7 +51,25 @@
 | `/selfie` | Selfie upload page; guests can tip to extend their selfie's screen time |
 | `/monitor` | Read-only realtime queue display for venue screens |
 | `/book` | DJ booking inquiry form |
-| `/dashboard` | DJ admin console — live requests, status controls, vibe filter, iTunes song search for DJ's Choice |
+| `/dashboard` | DJ admin console — live requests, status controls, vibe filter, iTunes song search for DJ's Choice, AI note badges |
+
+---
+
+## AI Note Triage
+
+When a guest submits a request with a note, the request page calls `POST /api/triage-note` in the background. The route:
+
+1. Loads the note **from the database** by request ID (the client never sends note text, so the endpoint cannot be used to send arbitrary text to the model)
+2. Skips requests with no note or that were already triaged, so each request is classified at most once
+3. Sends the note to Claude with a system prompt that treats the note as untrusted text and requires a JSON reply
+4. Validates the reply against an allow-list of categories (`birthday`, `shout_out`, `dedication`, `general_comment`, `explicit_concern`, `spam`, `other`) and a boolean review flag
+5. Stores the result on the request row; the dashboard shows it as a badge, with the one-line summary on hover
+
+Triage is best-effort. The request is saved before triage runs, the model call has an 8-second timeout with one retry, and any failure leaves the request untouched or marks it `other`. Skipped cases and failures are logged with a `triage-note:` prefix.
+
+Code: `src/lib/noteTriage.ts` (prompt, model call, output validation) and `src/app/api/triage-note/route.ts`.
+
+**Setup:** run `scripts/note_triage.sql` once in the Supabase SQL editor to add the storage columns, and set `ANTHROPIC_API_KEY`.
 
 ---
 
@@ -73,6 +93,10 @@
 | `email` | text | Optional |
 | `phone` | text | Optional |
 | `notes` | text | Optional |
+| `notes_category` | text | AI triage category (see AI Note Triage) |
+| `notes_flag` | boolean | True when the note needs DJ review |
+| `notes_summary` | text | One-line AI summary of the note |
+| `notes_triaged_at` | timestamptz | Set once triage has run; prevents repeat model calls |
 | `opt_in` | boolean | Event notification opt-in |
 | `event_id` | uuid | FK to events table |
 | `datetime_requested` | timestamp | |
@@ -122,6 +146,7 @@ NEXT_PUBLIC_BASE_URL=
 
 **Optional:**
 ```
+ANTHROPIC_API_KEY=            # enables AI note triage (server-side only)
 TWILIO_ACCOUNT_SID=
 TWILIO_AUTH_TOKEN=
 TWILIO_PHONE_NUMBER=
